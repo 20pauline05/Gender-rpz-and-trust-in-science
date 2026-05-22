@@ -7,7 +7,7 @@ ds <- read_excel(".../ds_final.xlsx")
 sw <- read_excel(".../share_women.xlsx") 
 sw$share_women_in_science <- as.numeric(sw$share_women_in_science)
 
-#Trust gap = mean(women) - mean(men)
+### Trust gap = mean(women) - mean(men) ###
 
 trust_gap <- ds %>%
   filter(!is.na(TRUST_PEW), DEM_GENDER %in% c(0, 1)) %>%
@@ -23,7 +23,7 @@ print(trust_gap %>% arrange(desc(trust_gap)), n = Inf)
 ### Merge with share of women in research ###
 
 merged <- trust_gap %>%
-  inner_join(sw, by = c("COUNTRY_NAME" = "country"))
+  inner_join(sw, by = c("COUNTRY_NAME" = "COUNTRY_NAME"))
 cat(sprintf(
   "\nCountries matched: %d  |  Dropped (no match): %d\n",
   nrow(merged),

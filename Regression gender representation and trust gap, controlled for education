@@ -1,0 +1,71 @@
+
+library(tidyverse)
+library(readxl)
+library(ggrepel) 
+
+ds <- read_excel(".../ds_final.xlsx")
+sw <- read_excel(".../share_women.xlsx") 
+sw$share_women_in_science <- as.numeric(sw$share_women_in_science)
+sw$share_educated_women <- as.numeric(sw$share_educated_women)
+
+### Trust gap = mean(women) - mean(men) ###
+
+trust_gap <- ds %>% #the %>% allows to make ds such that the following conditions
+  filter(!is.na(TRUST_PEW), DEM_GENDER %in% c(0, 1)) %>%
+  #filter(!is.na(...) garde uniquement les lignes où la colonne entre parenthèse n'est pas vide
+  #filter(dem_gender %in% c(0,1)) garde que les lignes où le genre vaut 0 ou 1
+  mutate(gender = if_else(DEM_GENDER == 1, "women", "men")) %>% #we make a new column with gender =1 correspond to women,and =0 correspond to men 
+  group_by(COUNTRY_NAME, gender) %>% #on groupe par pays et par genre. en gros on aura pour toutes les femmes de tel pays la trust in science 
+  summarise(mean_trust = mean(TRUST_PEW, na.rm = TRUE), .groups = "drop") %>% #dans chaque groupe on calcule la mean trust, puis on arrête le groupage
+  pivot_wider(names_from = gender, values_from = mean_trust) %>%  #a ce stade, le tableau a une ligne par pays X genre (donc 2 lignes par pays). On en fait une seule ligne, avec deux colonnes men et women
+  mutate(trust_gap = women - men)#on crée une colonne de plus qui compute le trust gap (donc un par ligne, ce qui fait un par pays)
+
+cat("\n=== Trust gaps by country ===\n")
+print(trust_gap %>% arrange(desc(trust_gap)), n = Inf)
+
+### Merging of tables ###
+
+merged <- merge(trust_gap, sw, by = c("COUNTRY_NAME")) #on fusionne les deux tableau de nos deux dataframes en supprimant les lignes de pays où on n'a pas de données pour tout
+print(merged)
+cat(sprintf(
+  "\nCountries matched: %d  |  Dropped (no match): %d\n",
+  nrow(merged),
+  nrow(trust_gap) - nrow(merged)
+))
+
+### Regressions to have the control result ###
+
+model_researchers_education <- lm(share_women_in_science ~ share_educated_women, data = sw) #Régression 1 on education rate ratio vs share researchers ratio
+e1 <- residuals(model_researchers_education)
+
+model_trust_education <- lm(trust_gap ~ share_educated_women, data = merged) #Régression 2 on education rate ratio vs gender trust gap
+e2 <- residuals(model_trust_education)
+
+e1_centered <- e1 + mean(sw$share_women_in_science, na.rm = TRUE)
+e2_centered <- e2 + mean(merged$trust_gap, na.rm = TRUE)
+
+model_partial <- lm(e2 ~ e1)
+r2 <- summary(model_partial)$r.squared
+p_val <- summary(model_partial)$coefficients[2, 4]
+slope <- summary(model_partial)$coefficients[2, 1]
+
+stats_label <- paste0("beta =", round(slope, 3), "\n", "R2 =", round(r2, 3), "\n", "p =", round(p_val, 3))
+
+### Plot ###
+
+p <- ggplot(merged, aes(x = e1_centered, y = e2_centered)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  geom_text(aes(label = COUNTRY_NAME), size = 3, vjust = -0.5) +
+  annotate("text",
+           x = Inf, y = Inf,
+           hjust = 1.1, vjust = 1.5,
+           label = stats_label,
+           size = 4) +
+  labs( title = "Gender trust gap vs share of women in science, by country",
+    x = "Share of women in research (%)",
+    y = "Gender trust gap",
+    caption = "Note : controled for gender education gap"
+  )
+
+print(p)

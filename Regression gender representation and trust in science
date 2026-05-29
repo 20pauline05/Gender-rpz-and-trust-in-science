@@ -11,7 +11,7 @@ sw$share_women_in_science <- as.numeric(sw$share_women_in_science)
 
 trust_gap <- ds %>%
   filter(!is.na(TRUST_PEW), DEM_GENDER %in% c(0, 1)) %>%
-  mutate(gender = if_else(DEM_GENDER == 1, "women", "men")) %>%
+  mutate(gender = if_else(DEM_GENDER == 0, "women", "men")) %>%
   group_by(COUNTRY_NAME, gender) %>% 
   summarise(mean_trust = mean(TRUST_PEW, na.rm = TRUE), .groups = "drop") %>% 
   pivot_wider(names_from = gender, values_from = mean_trust) %>%  

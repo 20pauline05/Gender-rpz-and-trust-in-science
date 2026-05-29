@@ -14,7 +14,7 @@ trust_gap <- ds %>% #the %>% allows to make ds such that the following condition
   filter(!is.na(TRUST_PEW), DEM_GENDER %in% c(0, 1)) %>%
   #filter(!is.na(...) garde uniquement les lignes où la colonne entre parenthèse n'est pas vide
   #filter(dem_gender %in% c(0,1)) garde que les lignes où le genre vaut 0 ou 1
-  mutate(gender = if_else(DEM_GENDER == 1, "women", "men")) %>% #we make a new column with gender =1 correspond to women,and =0 correspond to men 
+  mutate(gender = if_else(DEM_GENDER == 0, "women", "men")) %>% #we make a new column with gender =1 correspond to women,and =0 correspond to men 
   group_by(COUNTRY_NAME, gender) %>% #on groupe par pays et par genre. en gros on aura pour toutes les femmes de tel pays la trust in science 
   summarise(mean_trust = mean(TRUST_PEW, na.rm = TRUE), .groups = "drop") %>% #dans chaque groupe on calcule la mean trust, puis on arrête le groupage
   pivot_wider(names_from = gender, values_from = mean_trust) %>%  #a ce stade, le tableau a une ligne par pays X genre (donc 2 lignes par pays). On en fait une seule ligne, avec deux colonnes men et women
